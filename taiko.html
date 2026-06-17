@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>WebOsu Taiko</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #14141a; color: #eee;
+      font-family: "Segoe UI", Arial, sans-serif; overflow: hidden; }
+    a { color: #6cf; }
+    button, .btn { cursor: pointer; border: none; border-radius: 7px; padding: 9px 16px;
+      background: #e0568c; color: #fff; font-size: 14px; font-weight: 600; }
+    button:hover { filter: brightness(1.1); }
+    .secondary { background: #3a3a4a; }
+    select, input[type=text] { border-radius: 6px; border: 1px solid #444; background: #1b1b24;
+      color: #eee; padding: 8px 10px; font-size: 14px; }
+
+    /* ---- menu ---- */
+    #menu { height: 100%; overflow-y: auto; padding: 0 0 60px; }
+    .topbar { position: sticky; top: 0; z-index: 4; display: flex; align-items: center;
+      justify-content: space-between; padding: 14px 22px; background: #1b1b24cc;
+      backdrop-filter: blur(6px); border-bottom: 1px solid #2a2a36; }
+    .topbar h1 { font-size: 22px; margin: 0; }
+    .topbar h1 small { font-size: 12px; opacity: .55; font-weight: normal; }
+    .gear { background: #2a2a38; font-size: 18px; padding: 8px 12px; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 18px 22px; }
+    .card { background: #20202b; border: 1px solid #333; border-radius: 10px; padding: 16px 18px; margin: 16px 0; }
+    .card h2 { font-size: 16px; margin: 0 0 12px; color: #9cf; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+    .row label { min-width: 130px; opacity: .85; }
+    input[type=range] { flex: 1; min-width: 140px; }
+
+    /* online list */
+    .online-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    #search-input { flex: 1; min-width: 160px; display: none; }
+    #online-list { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .setcard { display: flex; gap: 10px; background: #2a2a38; border: 1px solid #3a3a48;
+      border-radius: 8px; overflow: hidden; cursor: pointer; min-height: 70px; position: relative; }
+    .setcard:hover { border-color: #e0568c; }
+    .setcard img { width: 90px; height: 70px; object-fit: cover; background: #111; flex: none; }
+    .setcard .meta { padding: 7px 9px; overflow: hidden; }
+    .setcard .t { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .setcard .a, .setcard .c { font-size: 11px; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .setcard .dl { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #e0568c; }
+    .hint { opacity: .7; font-size: 13px; margin: 10px 0; }
+    #online-more { display: none; width: 100%; margin-top: 12px; }
+
+    /* difficulty list */
+    #difflist .diff { display: block; width: 100%; text-align: left; background: #2a2a38;
+      margin: 6px 0; padding: 10px 14px; border: 1px solid #3a3a48; }
+    #difflist .diff b { font-size: 15px; } #difflist .diff span { display: block; font-size: 12px; opacity: .65; margin-top: 2px; font-weight: normal; }
+
+    /* keys */
+    .keys { display: flex; gap: 18px; flex-wrap: wrap; }
+    .keycol { text-align: center; } .keycol .lab { font-size: 12px; opacity: .7; margin-bottom: 4px; }
+    .keybtn { width: 64px; background: #3a3a4a; } .keybtn.listening { background: #e0568c; }
+    .don { color: #ff6b6b; } .kat { color: #5bb6ee; }
+    #skinstatus { font-size: 13px; opacity: .75; margin-top: 8px; }
+
+    /* ---- settings panel (slide-in) ---- */
+    #settings { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.55); }
+    #settings .sheet { position: absolute; top: 0; right: 0; height: 100%; width: min(440px, 92vw);
+      background: #1b1b24; border-left: 1px solid #333; overflow-y: auto; padding: 18px 20px 50px; }
+    #settings h2 { margin: 4px 0 8px; }
+    #settings .close { position: absolute; top: 14px; right: 16px; background: #2a2a38; }
+
+    /* ---- game ---- */
+    #game { display: none; position: fixed; inset: 0; background-size: cover; background-position: center; }
+    #game::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.55); pointer-events: none; }
+    #game canvas { position: relative; z-index: 1; }
+    .overlay { display: none; position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.7);
+      align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+    .overlay .panel { background: #20202b; border: 1px solid #444; border-radius: 12px; padding: 28px 36px; text-align: center; min-width: 280px; }
+    .overlay h2 { margin: 0 0 16px; }
+    .stats { text-align: left; margin: 0 auto 18px; display: inline-block; }
+    .stats div { margin: 3px 0; }
+    .r-grade { font-size: 54px; font-weight: 800; color: #ffd966; }
+    .esc-hint { position: fixed; right: 12px; bottom: 10px; z-index: 5; font-size: 12px; opacity: .5; display: none; }
+    #busy { display:none; position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.6);
+      align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+
+    /* ---- result screen (osu!-style grading) ---- */
+    #resultbox .grading-card { background: #1c1c26; border: 1px solid #3a3a48; border-radius: 14px;
+      width: min(680px, 94vw); padding: 20px 22px 22px; position: relative; }
+    .g-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; text-align: left; }
+    .g-info .g-title { font-size: 22px; font-weight: 700; font-style: italic; line-height: 1.2; }
+    .g-info .g-artist { opacity: .8; font-size: 13px; }
+    .g-info .g-sub { margin-top: 4px; }
+    .g-info .g-version { font-weight: 700; color: #9cf; }
+    .g-info .g-mapper { opacity: .7; font-size: 12px; }
+    .g-info .g-mods { margin-top: 6px; color: #ffd45b; font-weight: 700; letter-spacing: .05em; min-height: 1em; }
+    .g-grade { font-size: 96px; font-weight: 800; font-style: italic; line-height: .9; letter-spacing: -.05em; padding: 0 10px; flex: none; }
+    .g-grade.SS, .g-grade.S { color: #ffe14d; text-shadow: 0 0 24px #ff3; }
+    .g-grade.A { color: #7dff7d; text-shadow: 0 0 24px #0f0; }
+    .g-grade.B { color: #5bb6ee; text-shadow: 0 0 24px #3bf; }
+    .g-grade.C { color: #c06bff; text-shadow: 0 0 24px #90f; }
+    .g-grade.D { color: #ff6b6b; text-shadow: 0 0 24px #f00; }
+    .g-grade.F { color: #222; text-shadow: 0 0 24px #fff; }
+    .g-blocks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .g-block { position: relative; border-radius: 6px; padding: 20px 12px 10px; text-align: right;
+      font-size: 24px; font-weight: 700; color: #fff; text-shadow: 1px 2px 0 rgba(0,0,0,.3); box-shadow: 2px 3px 5px rgba(0,0,0,.4); }
+    .g-block:before { position: absolute; top: 6px; left: 10px; font-size: 11px; font-weight: 600; opacity: .7; text-shadow: none; }
+    .gb-score { background: #6b00c6; width: 100%; font-size: 34px; padding-top: 22px; }
+    .gb-score:before { content: "Score"; }
+    .gb-acc { background: #9aab33; flex: 1; } .gb-acc:before { content: "Accuracy"; }
+    .gb-combo { background: #a64d99; flex: 1; } .gb-combo:before { content: "Max Combo"; }
+    .gb-great { background: #4293ff; flex: 1; } .gb-great:before { content: "Great"; }
+    .gb-good { background: #5f8a00; flex: 1; } .gb-good:before { content: "Good"; }
+    .gb-miss { background: #c40b15; flex: 1; } .gb-miss:before { content: "Miss"; }
+    .g-fc { display: none; margin: 12px 0 0; color: #ff969c; font-weight: 800; font-style: italic; font-size: 20px; }
+    .g-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+
+    /* ---- mods screen ---- */
+    #modscreen .panel { min-width: 360px; }
+    .modgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+    .modbtn { background: #3a3a4a; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 12px 8px; line-height: 1.2; }
+    .modbtn small { font-size: 10px; opacity: .7; font-weight: normal; }
+    .modbtn.active { background: #e0568c; box-shadow: inset 0 0 0 2px #fff; }
+  </style>
+</head>
+
+<body>
+  <!-- ===================== MENU ===================== -->
+  <div id="menu">
+    <div class="topbar">
+      <h1>WebOsu Taiko <small>— osu!taiko, no install</small></h1>
+      <div style="display:flex; gap:8px;">
+        <button class="gear" id="mods-open" title="Mods">Mods</button>
+        <button class="gear" id="settings-open" title="Settings">⚙</button>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="card">
+        <h2>Online beatmaps</h2>
+        <div class="online-controls">
+          <select id="online-mode">
+            <option value="1">Popular</option>
+            <option value="2">Latest</option>
+            <option value="4">Search</option>
+          </select>
+          <input id="search-input" type="text" placeholder="Beatmap name / artist / mapper…" />
+          <button id="online-load">Load</button>
+        </div>
+        <div id="online-list"></div>
+        <button id="online-more" class="secondary">Load more</button>
+      </div>
+
+      <div class="card">
+        <h2>Local beatmap</h2>
+        <div class="row">
+          <button id="oszbutton" class="secondary">Open .osz file…</button>
+          <span style="opacity:.6;font-size:13px">or drag &amp; drop an .osz / .osk onto this page</span>
+        </div>
+        <input id="oszinput" type="file" accept=".osz,.zip" style="display:none" />
+      </div>
+
+      <div class="card" id="difflist-card" style="display:none">
+        <h2>Difficulties (osu!taiko)</h2>
+        <div id="difflist"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SETTINGS PANEL ===================== -->
+  <div id="settings">
+    <div class="sheet">
+      <button class="close" id="settings-close">✕</button>
+      <h2>Settings</h2>
+
+      <div class="card">
+        <h2>Controls</h2>
+        <div class="keys">
+          <div class="keycol"><div class="lab kat">Kat L</div><button class="keybtn" id="key-katL" data-code="68">D</button></div>
+          <div class="keycol"><div class="lab don">Don L</div><button class="keybtn" id="key-donL" data-code="70">F</button></div>
+          <div class="keycol"><div class="lab don">Don R</div><button class="keybtn" id="key-donR" data-code="74">J</button></div>
+          <div class="keycol"><div class="lab kat">Kat R</div><button class="keybtn" id="key-katR" data-code="75">K</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Audio &amp; mods</h2>
+        <div class="row"><label>Master volume</label><input id="opt-volume" type="range" min="0" max="100" value="70" /></div>
+        <div class="row"><label>Hit-sound volume</label><input id="opt-effect" type="range" min="0" max="100" value="100" /></div>
+        <div class="row"><label>Autoplay</label><input id="opt-autoplay" type="checkbox" /></div>
+      </div>
+
+      <div class="card">
+        <h2>Skin</h2>
+        <div class="row">
+          <button id="oskbutton" class="secondary">Load .osk skin…</button>
+          <button id="skinreset" class="secondary">Reset</button>
+        </div>
+        <input id="oskinput" type="file" accept=".osk,.zip" style="display:none" />
+        <div id="skinstatus">Using bundled default skin.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODS SCREEN ===================== -->
+  <div id="modscreen" class="overlay">
+    <div class="panel">
+      <h2>Mods</h2>
+      <div class="modgrid">
+        <button class="modbtn" data-mod="ez">Easy<small>HP/OD ×0.5</small></button>
+        <button class="modbtn" data-mod="hr">Hard Rock<small>HP/OD ×1.4</small></button>
+        <button class="modbtn" data-mod="hd">Hidden<small>fade out</small></button>
+        <button class="modbtn" data-mod="ht">Half Time<small>0.75× speed</small></button>
+        <button class="modbtn" data-mod="dt">Double Time<small>1.5× speed</small></button>
+        <button class="modbtn" data-mod="nf">No Fail<small>always clear</small></button>
+      </div>
+      <button id="mods-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===================== GAME ===================== -->
+  <div id="game"></div>
+  <div class="esc-hint" id="eschint">Esc: pause</div>
+
+  <div id="busy"><div>Loading…</div></div>
+
+  <div id="pausebox" class="overlay">
+    <div class="panel">
+      <h2>Paused</h2>
+      <button id="pause-resume">Resume</button>
+      <button id="pause-retry" class="secondary">Retry</button>
+      <button id="pause-quit" class="secondary">Quit</button>
+    </div>
+  </div>
+
+  <div id="resultbox" class="overlay">
+    <div class="grading-card">
+      <div class="g-top">
+        <div class="g-info">
+          <div class="g-title r-title"></div>
+          <div class="g-artist r-artist"></div>
+          <div class="g-sub"><span class="g-version r-version"></span> <span class="g-mapper r-mapper"></span></div>
+          <div class="g-mods r-mods"></div>
+        </div>
+        <div class="g-grade r-grade"></div>
+      </div>
+      <div class="g-blocks">
+        <div class="g-block gb-score r-score"></div>
+        <div class="g-block gb-acc r-acc"></div>
+        <div class="g-block gb-combo r-combo"></div>
+        <div class="g-block gb-great r-great"></div>
+        <div class="g-block gb-good r-good"></div>
+        <div class="g-block gb-miss r-miss"></div>
+      </div>
+      <div class="g-fc r-fullcombo">Full Combo!</div>
+      <div class="g-buttons">
+        <button id="result-retry">Retry</button>
+        <button id="result-quit" class="secondary">Quit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- libraries (plain script tags work on file://) -->
+  <script src="scripts/lib/pixi.min.js"></script>
+  <script src="scripts/lib/inflate.js"></script>
+  <script src="scripts/lib/zip.js"></script>
+  <script src="scripts/lib/zip-fs.js"></script>
+  <script src="scripts/config.js"></script>
+  <script src="scripts/skindata.js"></script>
+  <script>
+    // zip.js without web workers (workers are blocked on file://)
+    if (window.zip) {
+      zip.useWebWorkers = false;
+      if (window.Inflater && !zip.Inflater) zip.Inflater = window.Inflater;
+    }
+    document.getElementById("eschint").style.display = "block";
+  </script>
+  <script src="scripts/taikostandalone.js"></script>
+</body>
+
+</html>
